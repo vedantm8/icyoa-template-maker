@@ -24,6 +24,57 @@ function updatePointTypes() {
         .map(input => input.value.trim()).filter(Boolean);
 }
 
+function createSelectList(container, labelText, registry, selectedIds, onChange) {
+    const wrapper = document.createElement('div');
+
+    const label = document.createElement('label');
+    label.textContent = labelText;
+
+    const select = document.createElement('select');
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '-- Select --';
+    select.appendChild(defaultOption);
+
+    registry.forEach(({ id, label }) => {
+        if (!selectedIds.includes(id)) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = label;
+            select.appendChild(opt);
+        }
+    });
+
+    select.onchange = () => {
+        if (select.value) {
+            onChange(select.value);
+            select.selectedIndex = 0;
+        }
+    };
+
+    const list = document.createElement('ul');
+    list.classList.add('select-list');
+
+    selectedIds.forEach(id => {
+        const item = document.createElement('li');
+        const obj = registry.find(r => r.id === id);
+        item.textContent = obj ? obj.label : id;
+        const remove = document.createElement('button');
+        remove.textContent = '❌';
+        remove.onclick = () => {
+            selectedIds.splice(selectedIds.indexOf(id), 1);
+            wrapper.replaceWith(createSelectList(container, labelText, registry, selectedIds, onChange));
+        };
+        item.appendChild(remove);
+        list.appendChild(item);
+    });
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(select);
+    wrapper.appendChild(list);
+    return wrapper;
+}
+
 function addCategory() {
     const container = document.getElementById('categoriesContainer');
     const div = document.createElement('div');
@@ -31,32 +82,48 @@ function addCategory() {
 
     const header = document.createElement('div');
     header.classList.add('category-header');
-    header.innerHTML = `
-    <label>Category Name: <input placeholder="e.g., Abilities" /></label>
-  `;
+    header.innerHTML = `<label>Category Name: <input placeholder="e.g., Abilities" /></label>`;
 
     const body = document.createElement('div');
     body.classList.add('category-body');
-    body.innerHTML = `
-    <label>Requires Option(s): <select multiple class="requiresSelect"></select></label>
-    <div class="options"></div>
-    <button onclick="addOption(this)">+ Add Option</button>
-    <button onclick="this.parentElement.parentElement.remove(); refreshAllSelectMenus()">Remove Category</button>
-  `;
 
+    const requires = [];
+    const requiresContainer = document.createElement('div');
+
+    body.appendChild(requiresContainer);
+    const optionsDiv = document.createElement('div');
+    optionsDiv.classList.add('options');
+
+    const addBtn = document.createElement('button');
+    addBtn.textContent = "+ Add Option";
+    addBtn.onclick = () => addOption(optionsDiv);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = "Remove Category";
+    removeBtn.onclick = () => div.remove();
+
+    body.appendChild(optionsDiv);
+    body.appendChild(addBtn);
+    body.appendChild(removeBtn);
+
+    div.appendChild(header);
+    div.appendChild(body);
+    container.appendChild(div);
+
+    // Collapse
     header.style.cursor = "pointer";
     header.onclick = () => {
         body.style.display = body.style.display === "none" ? "block" : "none";
     };
 
-    div.appendChild(header);
-    div.appendChild(body);
-    container.appendChild(div);
+    div._requires = requires;
+    div._requiresContainer = requiresContainer;
+    div._optionsDiv = optionsDiv;
+
     refreshAllSelectMenus();
 }
 
-function addOption(button) {
-    const optionsDiv = button.parentElement.querySelector('.options');
+function addOption(optionsDiv) {
     const wrapper = document.createElement('div');
     wrapper.classList.add('option');
 
@@ -70,17 +137,41 @@ function addOption(button) {
 
     const body = document.createElement('div');
     body.classList.add('option-body');
-    body.innerHTML = `
-    <div class="costsContainer"></div>
-    <button type="button" onclick="addCostRow(this)">+ Add Cost</button>
 
-    <label>Image URL: <input /></label>
-    <label>Description: <textarea></textarea></label>
-    <label>Prerequisites: <select multiple class="prereqSelect"></select></label>
-    <label>Conflicts With: <select multiple class="conflictSelect"></select></label>
-    <label>Max Selections: <input type="number" placeholder="1" /></label>
-    <button onclick="this.parentElement.parentElement.remove(); refreshAllSelectMenus()">Remove Option</button>
-  `;
+    const costDiv = document.createElement('div');
+    costDiv.className = "costsContainer";
+
+    const addCostBtn = document.createElement('button');
+    addCostBtn.textContent = "+ Add Cost";
+    addCostBtn.onclick = () => addCostRow(costDiv);
+
+    const img = document.createElement('label');
+    img.innerHTML = `Image URL: <input />`;
+
+    const desc = document.createElement('label');
+    desc.innerHTML = `Description: <textarea></textarea>`;
+
+    const prerequisites = [];
+    const conflicts = [];
+
+    const prereqContainer = document.createElement('div');
+    const conflictContainer = document.createElement('div');
+
+    const maxSel = document.createElement('label');
+    maxSel.innerHTML = `Max Selections: <input type="number" placeholder="1" />`;
+
+    const remove = document.createElement('button');
+    remove.textContent = "Remove Option";
+    remove.onclick = () => wrapper.remove();
+
+    body.appendChild(costDiv);
+    body.appendChild(addCostBtn);
+    body.appendChild(img);
+    body.appendChild(desc);
+    body.appendChild(prereqContainer);
+    body.appendChild(conflictContainer);
+    body.appendChild(maxSel);
+    body.appendChild(remove);
 
     header.onclick = () => {
         body.style.display = body.style.display === "none" ? "block" : "none";
@@ -88,14 +179,16 @@ function addOption(button) {
 
     wrapper.appendChild(header);
     wrapper.appendChild(body);
-    optionsDiv.appendChild(wrapper);
+    wrapper._prereq = prerequisites;
+    wrapper._conflict = conflicts;
+    wrapper._prereqContainer = prereqContainer;
+    wrapper._conflictContainer = conflictContainer;
 
+    optionsDiv.appendChild(wrapper);
     refreshAllSelectMenus();
-    updatePointTypes();
 }
 
-function addCostRow(button) {
-    const container = button.previousElementSibling;
+function addCostRow(container) {
     const costRow = document.createElement('div');
 
     const dropdown = document.createElement('select');
@@ -135,47 +228,36 @@ function refreshAllSelectMenus() {
         return { label, id, element: opt };
     });
 
-    document.querySelectorAll('.category').forEach(categoryEl => {
-        const thisOptions = Array.from(categoryEl.querySelectorAll('.option')).map(opt =>
+    document.querySelectorAll('.category').forEach(catDiv => {
+        const thisOptions = Array.from(catDiv.querySelectorAll('.option')).map(opt =>
             toId(opt.querySelector('input').value.trim())
         );
-        const select = categoryEl.querySelector('.requiresSelect');
-        const selected = Array.from(select.selectedOptions).map(opt => opt.value);
-
-        select.innerHTML = '';
-        optionRegistry.forEach(({ label, id }) => {
-            if (!thisOptions.includes(id)) {
-                const opt = document.createElement('option');
-                opt.value = id;
-                opt.textContent = label;
-                if (selected.includes(id)) opt.selected = true;
-                select.appendChild(opt);
-            }
-        });
+        const registry = optionRegistry.filter(opt => !thisOptions.includes(opt.id));
+        const list = catDiv._requires || [];
+        const container = catDiv._requiresContainer;
+        container.innerHTML = '';
+        container.appendChild(createSelectList(catDiv, "Requires Option(s):", registry, list, id => {
+            list.push(id);
+            refreshAllSelectMenus();
+        }));
     });
 
     optionRegistry.forEach(({ label: currentLabel, id: currentId, element: currentElement }) => {
-        const prereqSelect = currentElement.querySelector('.prereqSelect');
-        const conflictSelect = currentElement.querySelector('.conflictSelect');
-
-        const selectedPrereq = Array.from(prereqSelect.selectedOptions).map(opt => opt.value);
-        const selectedConflict = Array.from(conflictSelect.selectedOptions).map(opt => opt.value);
-
-        [prereqSelect, conflictSelect].forEach(select => {
-            select.innerHTML = '';
-            optionRegistry.forEach(({ label, id }) => {
-                if (id !== currentId) {
-                    const opt = document.createElement('option');
-                    opt.value = id;
-                    opt.textContent = label;
-                    if ((select === prereqSelect && selectedPrereq.includes(id)) ||
-                        (select === conflictSelect && selectedConflict.includes(id))) {
-                        opt.selected = true;
-                    }
-                    select.appendChild(opt);
-                }
-            });
-        });
+        const registry = optionRegistry.filter(o => o.id !== currentId);
+        const prereq = currentElement._prereq || [];
+        const conflict = currentElement._conflict || [];
+        const prereqContainer = currentElement._prereqContainer;
+        const conflictContainer = currentElement._conflictContainer;
+        prereqContainer.innerHTML = '';
+        conflictContainer.innerHTML = '';
+        prereqContainer.appendChild(createSelectList(currentElement, "Prerequisites:", registry, prereq, id => {
+            prereq.push(id);
+            refreshAllSelectMenus();
+        }));
+        conflictContainer.appendChild(createSelectList(currentElement, "Conflicts With:", registry, conflict, id => {
+            conflict.push(id);
+            refreshAllSelectMenus();
+        }));
     });
 }
 
@@ -203,8 +285,7 @@ function exportJson() {
 
     document.querySelectorAll('.category').forEach(catDiv => {
         const catName = catDiv.querySelector('.category-header input').value.trim();
-        const requiresSelect = catDiv.querySelector('.requiresSelect');
-        const requires = Array.from(requiresSelect.selectedOptions).map(opt => opt.value);
+        const requires = catDiv._requires || [];
 
         const options = [];
         catDiv.querySelectorAll('.option').forEach(optDiv => {
@@ -223,9 +304,9 @@ function exportJson() {
 
             const img = inputs[1].value.trim();
             const description = inputs[2].value.trim();
-            const prerequisites = Array.from(optDiv.querySelector('.prereqSelect').selectedOptions).map(opt => opt.value);
-            const conflictsWith = Array.from(optDiv.querySelector('.conflictSelect').selectedOptions).map(opt => opt.value);
             const maxSelections = parseInt(inputs[3].value, 10);
+            const prerequisites = optDiv._prereq || [];
+            const conflictsWith = optDiv._conflict || [];
 
             const opt = { id, label, cost, img, description };
             if (prerequisites.length) opt.prerequisites = prerequisites;

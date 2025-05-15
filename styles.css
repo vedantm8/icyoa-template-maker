@@ -75,3 +75,26 @@ button:hover {
     padding: 6px 0;
     border-top: 1px solid #ddd;
 }
+
+.select-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 5px 0;
+}
+
+.select-list li {
+    background: #eee;
+    padding: 5px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.select-list button {
+    background: transparent;
+    color: red;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+}
