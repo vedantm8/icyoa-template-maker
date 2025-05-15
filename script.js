@@ -28,17 +28,31 @@ function addOption(button) {
     const div = document.createElement('div');
     div.classList.add('option');
     div.innerHTML = `
-    <label>ID: <input placeholder="e.g., strength" /></label>
-    <label>Label: <input placeholder="e.g., Super Strength" /></label>
+    <label>Label: <input placeholder="e.g., Super Strength" oninput="updateAutoId(this)" /></label>
+    <label><em>ID will auto-generate from label</em>: <span class="auto-id"></span></label>
     <label>Cost (JSON): <input placeholder='{"Power": 3}' /></label>
     <label>Image URL: <input /></label>
     <label>Description: <textarea></textarea></label>
-    <label>Prerequisites (comma-separated IDs): <input /></label>
-    <label>Conflicts With (comma-separated IDs): <input /></label>
+    <label>Prerequisites (comma-separated Labels): <input /></label>
+    <label>Conflicts With (comma-separated Labels): <input /></label>
     <label>Max Selections: <input type="number" placeholder="1" /></label>
     <button onclick="this.parentElement.remove()">Remove Option</button>
   `;
     optionsDiv.appendChild(div);
+}
+
+function updateAutoId(input) {
+    const label = input.value.trim();
+    const id = toId(label);
+    const autoIdSpan = input.parentElement.parentElement.querySelector('.auto-id');
+    autoIdSpan.textContent = id;
+}
+
+function toId(str) {
+    return str.replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase())
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .replace(/^[0-9]+/, '')
+        .replace(/^./, s => s.toLowerCase());
 }
 
 function exportJson() {
@@ -69,25 +83,25 @@ function exportJson() {
     document.querySelectorAll('.category').forEach(catDiv => {
         const catName = catDiv.querySelector('input').value.trim();
         const requiresInput = catDiv.querySelectorAll('input')[1].value.trim();
-        const requires = requiresInput ? requiresInput.split(',').map(s => s.trim()) : [];
+        const requires = requiresInput ? requiresInput.split(',').map(s => toId(s.trim())) : [];
 
         const options = [];
         catDiv.querySelectorAll('.option').forEach(optDiv => {
             const inputs = optDiv.querySelectorAll('input, textarea');
-            const opt = {
-                id: inputs[0].value.trim(),
-                label: inputs[1].value.trim(),
-                cost: JSON.parse(inputs[2].value || '{}'),
-                img: inputs[3].value.trim(),
-                description: inputs[4].value.trim(),
-            };
+            const label = inputs[0].value.trim();
+            const id = toId(label);
+            const cost = JSON.parse(inputs[1].value || '{}');
+            const img = inputs[2].value.trim();
+            const desc = inputs[3].value.trim();
 
-            const prereq = inputs[5].value.trim();
-            const conflicts = inputs[6].value.trim();
-            const maxSel = inputs[7].value;
+            const prereq = inputs[4].value.trim();
+            const conflicts = inputs[5].value.trim();
+            const maxSel = inputs[6].value;
 
-            if (prereq) opt.prerequisites = prereq.split(',').map(s => s.trim());
-            if (conflicts) opt.conflictsWith = conflicts.split(',').map(s => s.trim());
+            const opt = { id, label, cost, img, description: desc };
+
+            if (prereq) opt.prerequisites = prereq.split(',').map(s => toId(s.trim()));
+            if (conflicts) opt.conflictsWith = conflicts.split(',').map(s => toId(s.trim()));
             if (maxSel) opt.maxSelections = parseInt(maxSel, 10);
 
             options.push(opt);
