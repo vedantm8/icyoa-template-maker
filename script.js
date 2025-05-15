@@ -91,6 +91,50 @@ function addCategory() {
     const requiresContainer = document.createElement('div');
 
     body.appendChild(requiresContainer);
+
+    const subcategoriesDiv = document.createElement('div');
+    subcategoriesDiv.classList.add('subcategories');
+
+    const addSubBtn = document.createElement('button');
+    addSubBtn.textContent = "+ Add Subcategory";
+    addSubBtn.onclick = () => addSubcategory(subcategoriesDiv);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = "Remove Category";
+    removeBtn.onclick = () => div.remove();
+
+    body.appendChild(subcategoriesDiv);
+    body.appendChild(addSubBtn);
+    body.appendChild(removeBtn);
+
+    div.appendChild(header);
+    div.appendChild(body);
+    container.appendChild(div);
+
+    header.style.cursor = "pointer";
+    header.onclick = (e) => {
+        if (["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(e.target.tagName)) return;
+        body.style.display = body.style.display === "none" ? "block" : "none";
+    };
+
+    div._requires = requires;
+    div._requiresContainer = requiresContainer;
+    div._subcategoriesDiv = subcategoriesDiv;
+
+    refreshAllSelectMenus();
+}
+
+function addSubcategory(container) {
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('subcategory');
+
+    const header = document.createElement('div');
+    header.classList.add('subcategory-header');
+    header.innerHTML = `<label>Subcategory Name: <input placeholder="e.g., Species" /></label>`;
+
+    const body = document.createElement('div');
+    body.classList.add('subcategory-body');
+
     const optionsDiv = document.createElement('div');
     optionsDiv.classList.add('options');
 
@@ -99,27 +143,24 @@ function addCategory() {
     addBtn.onclick = () => addOption(optionsDiv);
 
     const removeBtn = document.createElement('button');
-    removeBtn.textContent = "Remove Category";
-    removeBtn.onclick = () => div.remove();
+    removeBtn.textContent = "Remove Subcategory";
+    removeBtn.onclick = () => wrapper.remove();
 
     body.appendChild(optionsDiv);
     body.appendChild(addBtn);
     body.appendChild(removeBtn);
 
+    wrapper.appendChild(header);
+    wrapper.appendChild(body);
+    wrapper._optionsDiv = optionsDiv;
+
     header.style.cursor = "pointer";
     header.onclick = (e) => {
-        if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
+        if (["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(e.target.tagName)) return;
         body.style.display = body.style.display === "none" ? "block" : "none";
     };
 
-    div.appendChild(header);
-    div.appendChild(body);
-    container.appendChild(div);
-
-    div._requires = requires;
-    div._requiresContainer = requiresContainer;
-    div._optionsDiv = optionsDiv;
-
+    container.appendChild(wrapper);
     refreshAllSelectMenus();
 }
 
@@ -174,21 +215,19 @@ function addOption(optionsDiv) {
     body.appendChild(remove);
 
     header.onclick = (e) => {
-        if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
+        if (["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(e.target.tagName)) return;
         body.style.display = body.style.display === "none" ? "block" : "none";
     };
 
     wrapper.appendChild(header);
     wrapper.appendChild(body);
-    optionsDiv.appendChild(wrapper);
-
     wrapper._prereq = prerequisites;
     wrapper._conflict = conflicts;
     wrapper._prereqContainer = prereqContainer;
     wrapper._conflictContainer = conflictContainer;
 
+    optionsDiv.appendChild(wrapper);
     refreshAllSelectMenus();
-    updatePointTypes();
 }
 
 function addCostRow(container) {
@@ -232,10 +271,8 @@ function refreshAllSelectMenus() {
     });
 
     document.querySelectorAll('.category').forEach(catDiv => {
-        const thisOptions = Array.from(catDiv.querySelectorAll('.option')).map(opt =>
-            toId(opt.querySelector('input').value.trim())
-        );
-        const registry = optionRegistry.filter(opt => !thisOptions.includes(opt.id));
+        const registry = optionRegistry;
+
         const list = catDiv._requires || [];
         const container = catDiv._requiresContainer;
         container.innerHTML = '';
@@ -290,37 +327,47 @@ function exportJson() {
         const catName = catDiv.querySelector('.category-header input').value.trim();
         const requires = catDiv._requires || [];
 
-        const options = [];
-        catDiv.querySelectorAll('.option').forEach(optDiv => {
-            const inputs = optDiv.querySelectorAll('input, textarea');
-            const label = inputs[0].value.trim();
-            const id = toId(label);
+        const subcategories = [];
+        catDiv._subcategoriesDiv?.querySelectorAll('.subcategory').forEach(subDiv => {
+            const subName = subDiv.querySelector('input').value.trim();
+            const options = [];
 
-            const costRows = optDiv.querySelectorAll('.costsContainer > div');
-            const cost = {};
-            costRows.forEach(row => {
-                const [typeSel, valInput] = row.querySelectorAll('select, input');
-                const type = typeSel.value;
-                const val = parseInt(valInput.value, 10);
-                if (type && !isNaN(val)) cost[type] = val;
+            subDiv.querySelectorAll('.option').forEach(optDiv => {
+                const inputs = optDiv.querySelectorAll('input, textarea');
+                const label = inputs[0].value.trim();
+                const id = toId(label);
+
+                const costRows = optDiv.querySelectorAll('.costsContainer > div');
+                const cost = {};
+                costRows.forEach(row => {
+                    const [typeSel, valInput] = row.querySelectorAll('select, input');
+                    const type = typeSel.value;
+                    const val = parseInt(valInput.value, 10);
+                    if (type && !isNaN(val)) cost[type] = val;
+                });
+
+                const img = inputs[1].value.trim();
+                const description = inputs[2].value.trim();
+                const maxSelections = parseInt(inputs[3].value, 10);
+                const prerequisites = optDiv._prereq || [];
+                const conflictsWith = optDiv._conflict || [];
+
+                const opt = { id, label, cost, img, description };
+                if (prerequisites.length) opt.prerequisites = prerequisites;
+                if (conflictsWith.length) opt.conflictsWith = conflictsWith;
+                if (!isNaN(maxSelections)) opt.maxSelections = maxSelections;
+
+                options.push(opt);
             });
 
-            const img = inputs[1].value.trim();
-            const description = inputs[2].value.trim();
-            const maxSelections = parseInt(inputs[3].value, 10);
-            const prerequisites = optDiv._prereq || [];
-            const conflictsWith = optDiv._conflict || [];
-
-            const opt = { id, label, cost, img, description };
-            if (prerequisites.length) opt.prerequisites = prerequisites;
-            if (conflictsWith.length) opt.conflictsWith = conflictsWith;
-            if (!isNaN(maxSelections)) opt.maxSelections = maxSelections;
-
-            options.push(opt);
+            if (subName) {
+                subcategories.push({ name: subName, options });
+            }
         });
 
-        const catEntry = { name: catName, options };
+        const catEntry = { name: catName };
         if (requires.length) catEntry.requiresOption = requires;
+        if (subcategories.length) catEntry.subcategories = subcategories;
         result.push(catEntry);
     });
 
