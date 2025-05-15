@@ -138,7 +138,6 @@ function addSubcategory(container) {
     const optionsDiv = document.createElement('div');
     optionsDiv.classList.add('options');
 
-    // ✅ Add Max Selections Input
     const maxSel = document.createElement('label');
     maxSel.innerHTML = `Max Options Selectable: <input type="number" class="max-options" placeholder="e.g., 2" />`;
 
@@ -150,8 +149,7 @@ function addSubcategory(container) {
     removeBtn.textContent = "Remove Subcategory";
     removeBtn.onclick = () => wrapper.remove();
 
-    // Append everything
-    body.appendChild(maxSel); // ✅ Include the new input here
+    body.appendChild(maxSel);
     body.appendChild(optionsDiv);
     body.appendChild(addBtn);
     body.appendChild(removeBtn);
@@ -288,7 +286,7 @@ function refreshAllSelectMenus() {
         }));
     });
 
-    optionRegistry.forEach(({ label: currentLabel, id: currentId, element: currentElement }) => {
+    optionRegistry.forEach(({ id: currentId, element: currentElement }) => {
         const registry = optionRegistry.filter(o => o.id !== currentId);
         const prereq = currentElement._prereq || [];
         const conflict = currentElement._conflict || [];
@@ -366,13 +364,12 @@ function exportJson() {
                 options.push(opt);
             });
 
-            // ✅ Handle Subcategory Max Selections
             const maxOptionsInput = subDiv.querySelector('.max-options');
             const maxOptions = parseInt(maxOptionsInput?.value, 10);
 
             if (subName) {
                 const subObj = { name: subName, options };
-                if (!isNaN(maxOptions)) subObj.maxSelections = maxOptions; // ✅ Inject here
+                if (!isNaN(maxOptions)) subObj.maxSelections = maxOptions;
                 subcategories.push(subObj);
             }
         });
@@ -385,3 +382,159 @@ function exportJson() {
 
     document.getElementById('outputJson').value = JSON.stringify(result, null, 2);
 }
+
+function handleImport() {
+    const input = document.getElementById('modalTextarea').value;
+    let data;
+    try {
+        data = JSON.parse(input);
+    } catch (e) {
+        alert(`Invalid JSON format:\n\n${e.message}`);
+        return;
+    }
+
+    let isValid = true;
+    const allOptionIds = new Set();
+    const errors = [];
+
+    // 🔍 Pre-validation loop
+    data.forEach(entry => {
+        if (entry.name && entry.subcategories) {
+            const catName = entry.name;
+            const catOptionIds = new Set();
+
+            entry.subcategories.forEach(sub => {
+                sub.options?.forEach(opt => {
+                    const { id, label, prerequisites = [], conflictsWith = [] } = opt;
+
+                    if (!id) return;
+
+                    if (catOptionIds.has(id)) {
+                        errors.push(`❌ Duplicate option ID "${id}" in category "${catName}".`);
+                        isValid = false;
+                    }
+
+                    if (prerequisites.includes(id)) {
+                        errors.push(`❌ Option "${label}" in "${catName}" cannot be a prerequisite of itself.`);
+                        isValid = false;
+                    }
+
+                    if (conflictsWith.includes(id)) {
+                        errors.push(`❌ Option "${label}" in "${catName}" cannot conflict with itself.`);
+                        isValid = false;
+                    }
+
+                    catOptionIds.add(id);
+                    allOptionIds.add(id);
+                });
+            });
+
+            // Category can't be locked by one of its own options
+            if (entry.requiresOption) {
+                entry.requiresOption.forEach(lockId => {
+                    if (catOptionIds.has(lockId)) {
+                        errors.push(`❌ Category "${catName}" cannot be locked by its own option ("${lockId}").`);
+                        isValid = false;
+                    }
+                });
+            }
+        }
+    });
+
+    if (!isValid) {
+        alert(`Import aborted due to the following error(s):\n\n${errors.join('\n')}`);
+        return;
+    }
+
+    // ✅ Clear UI
+    document.getElementById('titleInput').value = '';
+    document.getElementById('descriptionInput').value = '';
+    document.getElementById('headerImageInput').value = '';
+    document.getElementById('pointsContainer').innerHTML = '';
+    document.getElementById('categoriesContainer').innerHTML = '';
+    pointTypes = [];
+    optionRegistry = [];
+
+    // 🧱 Rebuild UI
+    data.forEach(entry => {
+        if (entry.type === "title") {
+            document.getElementById('titleInput').value = entry.text;
+        } else if (entry.type === "description") {
+            document.getElementById('descriptionInput').value = entry.text;
+        } else if (entry.type === "headerImage") {
+            document.getElementById('headerImageInput').value = entry.url;
+        } else if (entry.type === "points") {
+            Object.entries(entry.values).forEach(([pt, val]) => {
+                addPointType();
+                const div = [...document.querySelectorAll('#pointsContainer > div')].pop();
+                const inputs = div.querySelectorAll('input');
+                inputs[0].value = pt;
+                inputs[1].value = val;
+            });
+            updatePointTypes();
+        } else if (entry.name) {
+            addCategory();
+            const div = [...document.querySelectorAll('.category')].pop();
+            div.querySelector('.category-header input').value = entry.name;
+            if (entry.requiresOption?.length) div._requires.push(...entry.requiresOption);
+
+            entry.subcategories?.forEach(sub => {
+                addSubcategory(div._subcategoriesDiv);
+                const subDiv = [...div._subcategoriesDiv.querySelectorAll('.subcategory')].pop();
+                subDiv.querySelector('input').value = sub.name;
+                if (!isNaN(sub.maxSelections)) {
+                    subDiv.querySelector('.max-options').value = sub.maxSelections;
+                }
+
+                sub.options?.forEach(opt => {
+                    addOption(subDiv._optionsDiv);
+                    const optDiv = [...subDiv._optionsDiv.querySelectorAll('.option')].pop();
+                    const inputs = optDiv.querySelectorAll('input, textarea');
+                    inputs[0].value = opt.label;
+                    updateAutoId(inputs[0]);
+
+                    if (opt.cost) {
+                        Object.entries(opt.cost).forEach(([pt, val]) => {
+                            addCostRow(optDiv.querySelector('.costsContainer'));
+                            const row = [...optDiv.querySelectorAll('.costsContainer > div')].pop();
+                            const [sel, input] = row.querySelectorAll('select, input');
+                            sel.value = pt;
+                            input.value = val;
+                        });
+                    }
+
+                    inputs[1].value = opt.img || '';
+                    inputs[2].value = opt.description || '';
+                    inputs[3].value = opt.maxSelections || '';
+
+                    if (opt.prerequisites) optDiv._prereq.push(...opt.prerequisites);
+                    if (opt.conflictsWith) optDiv._conflict.push(...opt.conflictsWith);
+                });
+            });
+        }
+    });
+
+    refreshAllSelectMenus();
+    document.getElementById('modal').style.display = 'none';
+}
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('importBtn').onclick = () => {
+        document.getElementById('modalTitle').textContent = "Import Configuration";
+        document.getElementById('modalTextarea').value = '';
+        document.getElementById('modalConfirmBtn').onclick = handleImport;
+        document.getElementById('modal').style.display = 'block';
+    };
+
+    document.getElementById('modalClose').onclick = () => {
+        document.getElementById('modal').style.display = 'none';
+    };
+
+    window.onclick = (event) => {
+        if (event.target === document.getElementById('modal')) {
+            document.getElementById('modal').style.display = 'none';
+        }
+    };
+});

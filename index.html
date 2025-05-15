@@ -33,8 +33,21 @@
 
         <section>
             <button onclick="exportJson()">Export JSON</button>
+            <button id="importBtn">Import JSON</button>
             <textarea id="outputJson" rows="15" placeholder="Your JSON will appear here..."></textarea>
         </section>
+
+        <!-- ✅ Modal for Importing JSON -->
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <span id="modalClose" class="modal-close">&times;</span>
+                <h3 id="modalTitle">Import JSON Configuration</h3>
+                <textarea id="modalTextarea" rows="10" style="width: 100%; font-family: monospace;"
+                    placeholder="Paste your JSON here..."></textarea>
+                <button id="modalConfirmBtn">Confirm Import</button>
+            </div>
+        </div>
+
     </div>
 
     <script src="script.js"></script>
