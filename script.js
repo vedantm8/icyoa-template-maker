@@ -106,15 +106,15 @@ function addCategory() {
     body.appendChild(addBtn);
     body.appendChild(removeBtn);
 
+    header.style.cursor = "pointer";
+    header.onclick = (e) => {
+        if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
+        body.style.display = body.style.display === "none" ? "block" : "none";
+    };
+
     div.appendChild(header);
     div.appendChild(body);
     container.appendChild(div);
-
-    // Collapse
-    header.style.cursor = "pointer";
-    header.onclick = () => {
-        body.style.display = body.style.display === "none" ? "block" : "none";
-    };
 
     div._requires = requires;
     div._requiresContainer = requiresContainer;
@@ -173,19 +173,22 @@ function addOption(optionsDiv) {
     body.appendChild(maxSel);
     body.appendChild(remove);
 
-    header.onclick = () => {
+    header.onclick = (e) => {
+        if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
         body.style.display = body.style.display === "none" ? "block" : "none";
     };
 
     wrapper.appendChild(header);
     wrapper.appendChild(body);
+    optionsDiv.appendChild(wrapper);
+
     wrapper._prereq = prerequisites;
     wrapper._conflict = conflicts;
     wrapper._prereqContainer = prereqContainer;
     wrapper._conflictContainer = conflictContainer;
 
-    optionsDiv.appendChild(wrapper);
     refreshAllSelectMenus();
+    updatePointTypes();
 }
 
 function addCostRow(container) {
