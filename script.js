@@ -138,6 +138,10 @@ function addSubcategory(container) {
     const optionsDiv = document.createElement('div');
     optionsDiv.classList.add('options');
 
+    // ✅ Add Max Selections Input
+    const maxSel = document.createElement('label');
+    maxSel.innerHTML = `Max Options Selectable: <input type="number" class="max-options" placeholder="e.g., 2" />`;
+
     const addBtn = document.createElement('button');
     addBtn.textContent = "+ Add Option";
     addBtn.onclick = () => addOption(optionsDiv);
@@ -146,6 +150,8 @@ function addSubcategory(container) {
     removeBtn.textContent = "Remove Subcategory";
     removeBtn.onclick = () => wrapper.remove();
 
+    // Append everything
+    body.appendChild(maxSel); // ✅ Include the new input here
     body.appendChild(optionsDiv);
     body.appendChild(addBtn);
     body.appendChild(removeBtn);
@@ -360,8 +366,14 @@ function exportJson() {
                 options.push(opt);
             });
 
+            // ✅ Handle Subcategory Max Selections
+            const maxOptionsInput = subDiv.querySelector('.max-options');
+            const maxOptions = parseInt(maxOptionsInput?.value, 10);
+
             if (subName) {
-                subcategories.push({ name: subName, options });
+                const subObj = { name: subName, options };
+                if (!isNaN(maxOptions)) subObj.maxSelections = maxOptions; // ✅ Inject here
+                subcategories.push(subObj);
             }
         });
 
