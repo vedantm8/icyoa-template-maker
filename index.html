@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CYOA Input Builder</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <div class="container">
+        <h1>CYOA Input Builder</h1>
+
+        <section>
+            <h2>Metadata</h2>
+            <label>Title: <input type="text" id="titleInput" /></label><br />
+            <label>Description: <textarea id="descriptionInput"></textarea></label><br />
+            <label>Header Image URL: <input type="text" id="headerImageInput" /></label>
+        </section>
+
+        <section>
+            <h2>Points</h2>
+            <div id="pointsContainer"></div>
+            <button onclick="addPointType()">+ Add Point Type</button>
+        </section>
+
+        <section>
+            <h2>Categories</h2>
+            <div id="categoriesContainer"></div>
+            <button onclick="addCategory()">+ Add Category</button>
+        </section>
+
+        <section>
+            <button onclick="exportJson()">Export JSON</button>
+            <textarea id="outputJson" rows="15" placeholder="Your JSON will appear here..."></textarea>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
