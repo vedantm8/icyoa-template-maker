@@ -44,7 +44,6 @@ function addCategory() {
     <button onclick="this.parentElement.parentElement.remove(); refreshAllSelectMenus()">Remove Category</button>
   `;
 
-    // Toggle logic for collapsing/expanding
     header.style.cursor = "pointer";
     header.onclick = () => {
         body.style.display = body.style.display === "none" ? "block" : "none";
@@ -58,13 +57,20 @@ function addCategory() {
 
 function addOption(button) {
     const optionsDiv = button.parentElement.querySelector('.options');
-    const div = document.createElement('div');
-    div.classList.add('option');
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('option');
 
-    div.innerHTML = `
+    const header = document.createElement('div');
+    header.classList.add('option-header');
+    header.innerHTML = `
     <label>Label: <input placeholder="e.g., Super Strength" oninput="updateAutoId(this)" /></label>
     <label><em>ID:</em> <span class="auto-id"></span></label>
+  `;
+    header.style.cursor = "pointer";
 
+    const body = document.createElement('div');
+    body.classList.add('option-body');
+    body.innerHTML = `
     <div class="costsContainer"></div>
     <button type="button" onclick="addCostRow(this)">+ Add Cost</button>
 
@@ -73,9 +79,17 @@ function addOption(button) {
     <label>Prerequisites: <select multiple class="prereqSelect"></select></label>
     <label>Conflicts With: <select multiple class="conflictSelect"></select></label>
     <label>Max Selections: <input type="number" placeholder="1" /></label>
-    <button onclick="this.parentElement.remove(); refreshAllSelectMenus()">Remove Option</button>
+    <button onclick="this.parentElement.parentElement.remove(); refreshAllSelectMenus()">Remove Option</button>
   `;
-    optionsDiv.appendChild(div);
+
+    header.onclick = () => {
+        body.style.display = body.style.display === "none" ? "block" : "none";
+    };
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(body);
+    optionsDiv.appendChild(wrapper);
+
     refreshAllSelectMenus();
     updatePointTypes();
 }
@@ -121,7 +135,6 @@ function refreshAllSelectMenus() {
         return { label, id, element: opt };
     });
 
-    // CATEGORY: Requires Option(s) — exclude same-category options
     document.querySelectorAll('.category').forEach(categoryEl => {
         const thisOptions = Array.from(categoryEl.querySelectorAll('.option')).map(opt =>
             toId(opt.querySelector('input').value.trim())
@@ -141,7 +154,6 @@ function refreshAllSelectMenus() {
         });
     });
 
-    // OPTIONS: Prerequisites & Conflicts — exclude self
     optionRegistry.forEach(({ label: currentLabel, id: currentId, element: currentElement }) => {
         const prereqSelect = currentElement.querySelector('.prereqSelect');
         const conflictSelect = currentElement.querySelector('.conflictSelect');
