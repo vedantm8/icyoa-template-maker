@@ -53,3 +53,13 @@ button:hover {
     background: #fafafa;
     border-radius: 6px;
 }
+
+.category-header {
+    background-color: #eaeaea;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.category-body {
+    margin-top: 10px;
+}

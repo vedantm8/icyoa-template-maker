@@ -28,13 +28,30 @@ function addCategory() {
     const container = document.getElementById('categoriesContainer');
     const div = document.createElement('div');
     div.classList.add('category');
-    div.innerHTML = `
+
+    const header = document.createElement('div');
+    header.classList.add('category-header');
+    header.innerHTML = `
     <label>Category Name: <input placeholder="e.g., Abilities" /></label>
+  `;
+
+    const body = document.createElement('div');
+    body.classList.add('category-body');
+    body.innerHTML = `
     <label>Requires Option(s): <select multiple class="requiresSelect"></select></label>
     <div class="options"></div>
     <button onclick="addOption(this)">+ Add Option</button>
-    <button onclick="this.parentElement.remove(); refreshAllSelectMenus()">Remove Category</button>
+    <button onclick="this.parentElement.parentElement.remove(); refreshAllSelectMenus()">Remove Category</button>
   `;
+
+    // Toggle logic for collapsing/expanding
+    header.style.cursor = "pointer";
+    header.onclick = () => {
+        body.style.display = body.style.display === "none" ? "block" : "none";
+    };
+
+    div.appendChild(header);
+    div.appendChild(body);
     container.appendChild(div);
     refreshAllSelectMenus();
 }
@@ -98,14 +115,13 @@ function updateAutoId(input) {
 }
 
 function refreshAllSelectMenus() {
-    // Rebuild option registry
     optionRegistry = Array.from(document.querySelectorAll('.option')).map(opt => {
         const label = opt.querySelector('input').value.trim();
         const id = toId(label);
         return { label, id, element: opt };
     });
 
-    // CATEGORY: Requires Option(s) - exclude options from its own category
+    // CATEGORY: Requires Option(s) — exclude same-category options
     document.querySelectorAll('.category').forEach(categoryEl => {
         const thisOptions = Array.from(categoryEl.querySelectorAll('.option')).map(opt =>
             toId(opt.querySelector('input').value.trim())
@@ -125,7 +141,7 @@ function refreshAllSelectMenus() {
         });
     });
 
-    // OPTIONS: Prerequisites & Conflicts With - exclude self
+    // OPTIONS: Prerequisites & Conflicts — exclude self
     optionRegistry.forEach(({ label: currentLabel, id: currentId, element: currentElement }) => {
         const prereqSelect = currentElement.querySelector('.prereqSelect');
         const conflictSelect = currentElement.querySelector('.conflictSelect');
@@ -174,7 +190,7 @@ function exportJson() {
     if (Object.keys(points).length) result.push({ type: "points", values: points });
 
     document.querySelectorAll('.category').forEach(catDiv => {
-        const catName = catDiv.querySelector('input').value.trim();
+        const catName = catDiv.querySelector('.category-header input').value.trim();
         const requiresSelect = catDiv.querySelector('.requiresSelect');
         const requires = Array.from(requiresSelect.selectedOptions).map(opt => opt.value);
 
